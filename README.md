@@ -1,87 +1,78 @@
-# ガチャ新商品 Bluesky 自動投稿ボット
+# ガチャ新商品 Bluesky 自動投稿ボット(RSS版・完全無料)
 
-日本のガチャガチャ(ガシャポン/カプセルトイ)の新商品を、英語+日本語の併記でBlueskyに自動投稿します。
+ガチャ(ガシャポン/カプセルトイ)の新商品ニュースを、RSSで集めてBlueskyに自動投稿します。AIも有料APIも使わないので、**費用はかかりません**(GitHub ActionsとBlueskyの無料の範囲)。
 
 ## しくみ
 
-1. **収集(週1回)**:Claude APIのWeb検索で、バンダイ(ガシャポン)・タカラトミーアーツ・ケンエレファント・海洋堂の新商品を検索
-2. **検証**:公式ドメインのURLか、ページが実在するか、商品名がページ内にあるか、発売月が今日以降かを機械チェック(通らないものは捨てる)
-3. **投稿文の生成**:価格・種類数・発売月はコードで整形(AIの言い換えによる数字ミスを防止)
-4. **投稿(毎日)**:週の残り日数に合わせて1日1〜2件ずつ投稿。公式ページのリンクカード(OGP画像付き)で表示
-5. 重複投稿の防止、投稿履歴は `state/` に保存され、GitHubに自動コミットされます
+1. **収集(週1回)**:`feeds.txt` に書いたRSSを読み、「ガシャポン」「カプセルトイ」「ガチャガチャ」などを含む記事だけを拾う(スマホゲームのガチャ記事は除外)
+2. 新しい順に最大10件を、投稿の予定として `state/queue.json` に保存
+3. **投稿(毎日)**:週の残り日数に合わせて1日1〜2件ずつ投稿。重複投稿は防止
+4. 記事の本文や画像はコピーせず、**見出し+リンクカード(記事ページのプレビュー画像)**だけを使う
 
 投稿イメージ:
 
 ```
-New Gashapon from Bandai: "My Hero Academia Gyu-cotto" 🧸
-Tiny figures hugging mini plushies. 5 designs, ¥500/spin, December 2026 in Japan.
+🇯🇵 New capsule toy news from Japan
+バンダイ「僕のヒーローアカデミア ぎゅーこっと」12月発売
 
-バンダイ新作ガシャポン「僕のヒーローアカデミア ぎゅーこっと」
-ぬいぐるみを抱くデフォルメフィギュア。全5種、1回500円、2026年12月発売予定。
-#Gashapon #CapsuleToy #ガシャポン
+#CapsuleToy #Gachagacha #カプセルトイ
 ```
+(下にリンクカードが付きます。英語は定型の一文、見出しは日本語のままです)
 
 ## セットアップ手順
 
-### 1. GitHubリポジトリを作る
-- 新しいリポジトリを作成(非公開でOK)
-- このフォルダの `gacha_bot.py` と `requirements.txt` をリポジトリ直下に置く
-- `gacha-weekly.yml` は **`.github/workflows/gacha-weekly.yml`** として置く
+### 1. ファイルを置く(すでに前のボットを置いている場合)
+リポジトリに次の4つを置きます。
 
-### 2. Blueskyのアプリパスワードを作る
-- Bluesky → 設定 → プライバシーとセキュリティ → アプリパスワード → 追加
-- 通常のログインパスワードは使わないでください
-- プロフィール文に「自動投稿のボットアカウントです」と明記しておくことをおすすめします
-
-### 3. Anthropic APIキーを用意する
-- Claude Console でAPIキーを発行
-- 組織の管理者がConsoleでWeb検索を有効にしている必要があります
-
-### 4. GitHubにSecretsを登録する
-リポジトリの Settings → Secrets and variables → Actions → Secrets に以下を追加:
-
-| 名前 | 値 |
+| ファイル | 置き方 |
 |---|---|
-| `ANTHROPIC_API_KEY` | AnthropicのAPIキー |
-| `BSKY_HANDLE` | 例: `yourname.bsky.social` |
-| `BSKY_APP_PASSWORD` | 手順2のアプリパスワード |
+| `gacha_bot_rss.py` | 直下に追加(Add file → Upload files) |
+| `feeds.txt` | 直下に追加(同上) |
+| `requirements.txt` | 直下の同名ファイルを**上書き** |
+| `gacha-weekly.yml` | `.github/workflows/gacha-weekly.yml` を**開いて中身を全部差し替え**(鉛筆アイコンで編集 → 貼り付け → Commit changes) |
 
-### 5. まず手動でドライラン
-- Actions タブ → 「Gacha news bot」→ Run workflow → `dry_run` を ON のまま実行
-- ログに、収集された商品と「投稿される予定の文章」が出ます(Blueskyには投稿されません)
-- `state/queue.json` に候補が保存されます
+古い `gacha_bot.py` は使わないので、そのままでも削除しても構いません。
 
-### 6. 最初の数週間は承認モードで運用(初期設定)
-- 初期設定では `REQUIRE_APPROVAL=true`:`state/queue.json` で `"approved": true` にした商品だけが投稿されます
-- GitHub上で `state/queue.json` を開き、内容(`text` の文面も編集できます)を確認して `"approved": true` に変更して保存
-- 事実(価格・発売月・商品名)を公式ページと見比べてください
+### 2. Secretsは2つだけ
+Settings → Secrets and variables → Actions に、次の2つがあればOKです(`ANTHROPIC_API_KEY` は不要)。
 
-### 7. 完全自動へ切り替える
-- Settings → Secrets and variables → Actions → **Variables** に `REQUIRE_APPROVAL` = `false` を追加
-- 以降は毎日03:00 UTC(日本時間12:00)に自動実行されます
+- `BSKY_HANDLE`
+- `BSKY_APP_PASSWORD`
+
+### 3. RSSが読めるかを確認する(最初に1回)
+1. Actions タブ → 「Gacha news bot」→ Run workflow
+2. `command` を **check** にして実行
+3. ログに、feeds.txt の各行について `[OK]`(読めた・何件マッチしたか)か `[NG]`(読めない)が出ます
+
+`[NG]` の行は、feeds.txt から消してください。マッチ件数が0のRSSも、あまり役に立たないので外してかまいません。追加したいRSS(メーカーのプレスリリースやニュースサイト)があれば、同じ書式で足せます。
+
+> feeds.txt の最初の3行は「候補」です。実在するかは、実行して確かめる必要があります。
+
+### 4. 動作確認(ドライラン)
+1. `command` を **daily**、`dry_run` を**チェック済み**のまま実行
+2. ログに「投稿される予定の文面」が出ます(Blueskyには投稿されません)
+3. `state/queue.json` に記事の候補が保存されます
+
+### 5. 最初の数週間は承認モードで運用(初期設定)
+- `state/queue.json` を開き、内容と `text`(投稿文)を確認して、投稿してよいものを `"approved": true` にして保存します
+- `"approved": false` のままのものは投稿されません
+
+### 6. 完全自動へ切り替える
+Settings → Secrets and variables → Actions → **Variables** に `REQUIRE_APPROVAL` = `false` を追加します。以降は、毎日03:00 UTC(日本時間12:00)に自動で動きます。
 
 ## 設定(任意)
 
 | 変数 | 既定値 | 内容 |
 |---|---|---|
-| `REQUIRE_APPROVAL` | `true` | 承認した商品のみ投稿 |
-| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Web検索に対応したモデル名(400エラーが出たら変更) |
+| `REQUIRE_APPROVAL` | `true` | 承認した記事のみ投稿 |
 | `MAX_ITEMS_PER_WEEK` | `10` | 週あたりの最大件数 |
-| `STRICT_NAME_CHECK` | `true` | 商品名が公式ページに無ければ除外 |
-| `OFFICIAL_DOMAINS` | 主要メーカー | リンク先として許可するドメイン(カンマ区切り) |
+| `MAX_PER_SOURCE` | `5` | 1つのRSSから拾う最大件数(偏り防止) |
+| `MAX_AGE_DAYS` | `14` | これより古い記事は無視 |
 
-## 運用上の注意
+## 注意
 
-- 発売日・価格は「開発中の情報」として変更される場合があります。承認モードで公式ページを確認してから投稿するのが安全です
-- 投稿する画像は、公式ページのOGP画像をBlueskyのリンクカードとして表示する形です(画像ファイルの転載は行いません)
-- 週の件数が5件に満たない場合は、ログに警告が出ます(新商品の発表が少ない週など)
-- GitHub Actionsが失敗すると、GitHubから通知メールが届きます
-
-## 手動実行(ローカル)
-
-```bash
-pip install -r requirements.txt
-export ANTHROPIC_API_KEY=...
-DRY_RUN=true python gacha_bot.py collect
-DRY_RUN=true python gacha_bot.py post
-```
+- 見出しをそのまま使うので、**発売日や価格などの誤情報は出にくい**ですが、ニュースの内容がガチャ商品ではない(イベント告知など)ことはあります。承認モードで確認してください。
+- 英語は定型の一文だけです。あとから、英語の文面をAIに任せる形に変えることもできます。
+- 利用するRSSの利用条件は、各サイトで確認してください。メーカーの公式プレスリリースが中心だと安心です。
+- 週の件数が5件に満たない場合は、ログに警告が出ます。feeds.txt にRSSを足してください。
+- GitHub Actionsが失敗すると、GitHubから通知メールが届きます。
