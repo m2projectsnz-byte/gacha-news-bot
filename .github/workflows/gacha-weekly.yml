@@ -1,4 +1,4 @@
-# Place this file at: .github/workflows/gacha-weekly.yml
+# Place this file at: .github/workflows/gacha-weekly.yml   (replace the old one)
 name: Gacha news bot
 
 on:
@@ -6,6 +6,13 @@ on:
     - cron: "0 3 * * *"   # every day 03:00 UTC (12:00 JST). Collects once per week, posts a share each day.
   workflow_dispatch:
     inputs:
+      command:
+        description: "daily = normal run / check = only test the RSS feeds in feeds.txt"
+        type: choice
+        options:
+          - daily
+          - check
+        default: daily
       dry_run:
         description: "Print posts only (nothing is posted to Bluesky)"
         type: boolean
@@ -33,15 +40,13 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Run bot
-        run: python gacha_bot.py daily
+        run: python gacha_bot_rss.py "$COMMAND"
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          COMMAND: ${{ inputs.command || 'daily' }}
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
           # Repository variable. Leave unset (or "true") while reviewing; set to "false" for full automation.
           REQUIRE_APPROVAL: ${{ vars.REQUIRE_APPROVAL || 'true' }}
-          # Optional repository variable if the default model does not support web search.
-          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'claude-sonnet-5-5' }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
 
       - name: Save state
