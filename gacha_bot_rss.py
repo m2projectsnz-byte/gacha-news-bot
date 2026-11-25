@@ -56,9 +56,18 @@ UA = "Mozilla/5.0 (compatible; GachaNewsBot/1.0; +feed-reader)"
 # Candidate feeds. These are guesses: run `check` once and edit feeds.txt based on the result.
 # A page URL (not just a feed URL) also works: the bot looks for the feed link inside the page.
 DEFAULT_FEEDS = [
-    ("https://www.toy-people.com/jp/", "Toy People"),
+    # capsule toy / gashapon news sites
+    ("https://www.toy-people.com/en/", "Toy People (English)"),
+    ("https://hobby.dengeki.com/tag/gatya/feed/", "Dengeki Hobby (gacha tag)"),
+    ("https://www.itmedia.co.jp/keywords/gashapon.html", "ITmedia (gashapon keyword)"),
+    # maker press releases on PR TIMES
+    ("https://prtimes.jp/companyrdf.php?company_id=122810", "PR TIMES (Bandai)"),
     ("https://prtimes.jp/companyrdf.php?company_id=166988", "PR TIMES (Kenelephant)"),
+    # sites that republish PR TIMES releases (general news; the keyword filter keeps capsule toys only)
     ("https://www.inside-games.jp/rss/index.rdf", "Inside"),
+    ("https://www.gamespark.jp/rss/index.rdf", "Game*Spark"),
+    ("https://animeanime.jp/rss/index.rdf", "Anime Anime"),
+    ("https://resemom.jp/rss/index.rdf", "Resemom"),
 ]
 
 # Only articles that clearly talk about capsule toys. Plain "ガチャ" is left out on purpose
@@ -112,14 +121,19 @@ def item_title(item):
 
 def load_feed_list():
     if not FEEDS_PATH.exists():
+        log(f"Feed list: '{FEEDS_PATH}' not found in the repository root -> using the built-in list ({len(DEFAULT_FEEDS)} feeds).")
         return DEFAULT_FEEDS
     feeds = []
-    for line in FEEDS_PATH.read_text(encoding="utf-8").splitlines():
+    for line in FEEDS_PATH.read_text(encoding="utf-8-sig").splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
         url, _, label = line.partition("|")
         feeds.append((url.strip(), label.strip() or url.strip()))
+    if not feeds:
+        log(f"Feed list: '{FEEDS_PATH}' has no feed lines -> using the built-in list ({len(DEFAULT_FEEDS)} feeds).")
+        return DEFAULT_FEEDS
+    log(f"Feed list: using '{FEEDS_PATH}' ({len(feeds)} feeds).")
     return feeds
 
 
