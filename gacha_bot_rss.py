@@ -76,6 +76,18 @@ KEYWORD_RE = re.compile(r"ガシャポン|ガチャガチャ|カプセルトイ|
 EXCLUDE_RE = re.compile(r"ピックアップ|召喚|ソシャゲ|スマホゲーム|スマートフォンゲーム|アプリ|無料\s*\d+\s*連|イベントガチャ")
 
 
+# Articles that are about something other than a NEW product: rankings, awards, re-releases, second sales...
+# They are skipped automatically, unless the headline also announces something new (KEEP_NEW_RE).
+# Edit the words below to tune what gets skipped.
+NOT_NEW_RE = re.compile(r"ランキング|受賞|選出|ヒット商品|[0-9０-９]位|累計出荷|世界累計|"
+                        r"再登場|再販|再発売|再入荷|復刻|2次販売|二次販売|第2次販売|当選|抽選|プレゼント")
+KEEP_NEW_RE = re.compile(r"新作|新商品|新製品|新シリーズ|新登場|初登場")
+
+
+def is_not_new_product(title):
+    return bool(NOT_NEW_RE.search(title)) and not KEEP_NEW_RE.search(title)
+
+
 def log(msg):
     print(msg, flush=True)
 
@@ -188,7 +200,8 @@ def entries_from(parsed, label):
 
 def is_relevant(c):
     text = f"{c['title']} {c['summary']}"
-    return bool(KEYWORD_RE.search(text)) and not EXCLUDE_RE.search(c["title"])
+    return (bool(KEYWORD_RE.search(text)) and not EXCLUDE_RE.search(c["title"])
+            and not is_not_new_product(c["title"]))
 
 
 # ---------------------------------------------------------------- compose
@@ -377,8 +390,20 @@ def post_today():
     today = now.date().isoformat()
     queue = load_json(QUEUE_PATH, [])
     state = load_posted()
+    # Drop items that were never approved by hand and are not about a new product
+    # (e.g. queued before the filter existed). Items you approved yourself are always kept.
+    kept = []
+    for q in queue:
+        if not q.get("approved") and is_not_new_product(item_title(q)):
+            log(f"Skipped (not a new-product article): {item_title(q)}")
+        else:
+            kept.append(q)
+    if len(kept) != len(queue) and not DRY_RUN:
+        save_json(QUEUE_PATH, kept)
+    queue = kept
     posted_today = sum(1 for p in state["posted"] if p.get("posted_at", "").startswith(today))
-    postable = [q for q in queue if q.get("approved")]
+    # With REQUIRE_APPROVAL=false every queued item is postable; otherwise only approved ones.
+    postable = [q for q in queue if q.get("approved") or not REQUIRE_APPROVAL]
     days_left = 7 - now.weekday()  # Mon=7 ... Sun=1: spreads the queue across the rest of the week
     total_today = math.ceil((len(postable) + posted_today) / days_left)
     n = max(0, min(total_today - posted_today, len(postable)))
