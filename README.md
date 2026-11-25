@@ -60,6 +60,11 @@ Settings → Secrets and variables → Actions に、次の2つがあればOKで
 ### 6. 完全自動へ切り替える
 Settings → Secrets and variables → Actions → **Variables** に `REQUIRE_APPROVAL` = `false` を追加します。以降は、毎日03:00 UTC(日本時間12:00)に自動で動きます。
 
+- `false` にすると、キューにある記事は承認なしで、1日1〜2件ずつ投稿されます(`queue.json` の書き換えは不要です)
+- 新商品の紹介ではない記事(ランキング・受賞・再販・再登場・2次販売・抽選・プレゼントなどの言葉を含む記事)は、収集のときに自動で除外されます。ただし、見出しに「新作」「新商品」「新登場」などが含まれる記事は残ります
+- 除外する言葉は、`gacha_bot_rss.py` の `NOT_NEW_RE` で変更できます
+- 自分で `"approved": true` にした記事は、除外の対象になりません
+
 ## 設定(任意)
 
 | 変数 | 既定値 | 内容 |
