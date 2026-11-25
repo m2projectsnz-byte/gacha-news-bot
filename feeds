@@ -1,0 +1,24 @@
+# One feed per line:  URL | label
+# A normal web page URL also works: the bot looks for the RSS link inside the page.
+# Lines starting with # are ignored.
+#
+# Everything below is a CANDIDATE found by searching; none of the feed URLs has been confirmed yet.
+# Run the workflow with command = "check" once, look at the log, and delete the lines marked [NG]
+# (and the ones with matching=0). Add other feeds the same way.
+
+# --- Capsule toy / gashapon news sites ---
+https://www.toy-people.com/en/ | Toy People (English)
+https://www.toy-people.com/jp/ | Toy People (Japanese)
+https://hobby.dengeki.com/tag/gatya/feed/ | Dengeki Hobby (gacha tag)
+https://hobby.dengeki.com/tag/gatya/ | Dengeki Hobby (gacha tag page)
+https://www.itmedia.co.jp/keywords/gashapon.html | ITmedia (gashapon keyword)
+
+# --- Maker press releases on PR TIMES (company ids inferred from release URLs) ---
+https://prtimes.jp/companyrdf.php?company_id=122810 | PR TIMES (Bandai)
+https://prtimes.jp/companyrdf.php?company_id=166988 | PR TIMES (Kenelephant)
+
+# --- Sites that republish PR TIMES releases (general news; the keyword filter keeps only capsule toys) ---
+https://www.inside-games.jp/rss/index.rdf | Inside
+https://www.gamespark.jp/rss/index.rdf | Game*Spark
+https://animeanime.jp/rss/index.rdf | Anime Anime
+https://resemom.jp/rss/index.rdf | Resemom
